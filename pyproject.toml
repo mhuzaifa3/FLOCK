@@ -1,0 +1,36 @@
+[project]
+name = "flock"
+version = "0.2.0"
+description = "Face-recognition smart lock with presentation-attack detection"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "opencv-python>=4.9",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+aws = ["boto3>=1.34"]
+dev = ["pytest>=8", "scikit-learn>=1.4", "pillow>=10", "ruff>=0.6"]
+
+[project.scripts]
+flock-enroll = "flock.cli.enroll:main"
+flock-lock = "flock.cli.run:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flock*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,27 @@
+# Face data never belongs in this repository.
+data/
+images/
+enrollments/
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.avi
+
+# Downloaded model weights (fetched by scripts/fetch_models.py).
+models/*.onnx
+
+# Runtime artefacts
+events/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
