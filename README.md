@@ -9,25 +9,42 @@ face fails before the identity match runs at all.
 
 ## Measured accuracy
 
-Verification accuracy on the [LFW](http://vis-www.cs.umass.edu/lfw/) test pairs,
-the standard benchmark for this task. Reproduce with `python eval/recognition.py`:
+Verification accuracy on the [LFW](http://vis-www.cs.umass.edu/lfw/) test pairs.
+Reproduce with `python eval/recognition.py`:
 
-| target true-reject rate | threshold | true-accept rate | true-reject rate |
-|---|---|---|---|
-| 0.990 | 0.3042 | 0.9858 | 0.9899 |
-| 0.995 | 0.3153 | 0.9817 | 0.9939 |
-| 0.999 | 0.3388 | 0.9817 | 0.9980 |
+| target FMR | threshold | true-accept rate | impostor accepts | 95% FMR bound | basis |
+|---|---|---|---|---|---|
+| 1e-2 | 0.3057 | 0.9838 | 4 of 495 | 1.8e-2 | measured |
+| 1e-3 | 0.3785 | 0.9757 | 0 of 495 | 6.0e-3 | extrapolated |
+| 1e-4 | 0.4384 | 0.9675 | 0 of 495 | 6.0e-3 | extrapolated |
+| 1e-5 | 0.4904 | 0.9432 | 0 of 495 | 6.0e-3 | extrapolated |
+| 1e-6 | 0.5370 | 0.8824 | 0 of 495 | 6.0e-3 | extrapolated |
+
+The shipped default targets a false-match rate of **1e-6**, the rate consumer
+phone face unlock is specified at, which puts the threshold at 0.5370 and costs
+12% of single-frame accepts. Set it in `flock/config.py` as
+`target_false_match_rate`; `flock/calibrate.py` maps the rate to a threshold.
+
+Read the last two columns before trusting any of this. The run scores 495
+impostor pairs, so its resolution bottoms out around 1 in 500. Zero accepts in
+495 comparisons bounds the true rate at 6.0e-3 with 95% confidence and no
+tighter, whatever threshold produced the zero. Demonstrating 1e-6 takes roughly
+three million impostor comparisons, which is a different dataset than this one.
+
+Everything below 6.0e-3 therefore comes off a normal tail fitted to the impostor
+scores, extended past the data. The fit is supported in-sample (skew 0.08,
+excess kurtosis -0.06, Shapiro-Wilk p=0.24) and unvalidated out of it. A tail
+that is heavier than normal in the region nobody measured would put the real
+rate above the target, so treat 1e-6 as a design goal Flock aims at rather than
+a property it demonstrates.
 
 Best accuracy is 0.9909 at threshold 0.3403. The run scored 988 of 1000 pairs;
 the other 12 contained a face the detector did not find.
 
-The shipped default is **threshold 0.3388**, giving a 98.2% true-accept rate at
-a 99.8% true-reject rate. Tune a door lock by fixing how often a stranger gets
-in and accepting whatever convenience that leaves, which is why the table is
-indexed by true-reject rate.
-
-The 99.8% ceiling is a property of the benchmark, not the model: 494 pairs of
-different people cannot measure a rate finer than about 1 in 500.
+Two things this benchmark does not cover. LFW is a one-to-one verification test,
+while the door runs one-to-many search against every enrolled template, which
+multiplies the per-comparison rate by the size of the roster. And LFW faces are
+web photographs, not a camera at a doorway at night.
 
 ### Liveness
 
