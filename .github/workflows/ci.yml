@@ -1,19 +1,38 @@
 name: CI
 
+# Runs on main, and on demand from ci-command.yml when a maintainer comments
+# "/ci" on a pull request. There is deliberately no `pull_request` trigger:
+# an unreviewed contribution must not be able to execute anything here.
+
 on:
   push:
     branches: [main]
-  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Ref to check out. Defaults to the triggering ref.
+        type: string
+        required: false
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          # The checked-out tree may be an unmerged contribution, so the job
+          # must not carry a credential it could exfiltrate.
+          persist-credentials: false
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
       - name: System libraries for OpenCV

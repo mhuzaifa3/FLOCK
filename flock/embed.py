@@ -1,4 +1,4 @@
-"""SFace embeddings. Enrolment stores 128-d vectors, never face imagery."""
+"""SFace embeddings. Enrollment stores 128-d vectors, never face imagery."""
 from __future__ import annotations
 
 import cv2

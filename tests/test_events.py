@@ -9,7 +9,7 @@ class BrokenSink:
         raise RuntimeError(msg)
 
 
-def test_event_serialises_to_one_line(tmp_path):
+def test_event_serializes_to_one_line(tmp_path):
     sink = JsonlFileSink(tmp_path / "events.jsonl")
     sink.emit(AccessEvent(decision="unlock", reason="match", identity="alice"))
     sink.emit(AccessEvent(decision="deny", reason="unknown_identity"))

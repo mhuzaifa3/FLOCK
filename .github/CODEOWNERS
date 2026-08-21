@@ -1,0 +1,10 @@
+# Every change needs review from the owner before it can land on main.
+# The workflows and the thresholds that decide access are called out
+# separately so the requirement survives any future narrowing of the
+# catch-all rule above them.
+
+*                       @mhuzaifa3
+/.github/               @mhuzaifa3
+/flock/config.py        @mhuzaifa3
+/flock/pipeline.py      @mhuzaifa3
+/flock/liveness/        @mhuzaifa3

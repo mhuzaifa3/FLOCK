@@ -1,6 +1,6 @@
 # Flock
 
-A face-recognition door lock for Raspberry Pi, with presentation-attack detection
+A face-recognition door lock for Raspberry Pi, with spoof detection
 so a photograph or a phone screen cannot open the door.
 
 Identity is decided by comparing 128-dimensional face embeddings, not by storing
@@ -12,7 +12,7 @@ is rejected without the identity ever being considered.
 Verification accuracy on the [LFW](http://vis-www.cs.umass.edu/lfw/) test pairs,
 the standard benchmark for this task. Reproduce with `python eval/recognition.py`:
 
-| target TRR | threshold | TAR | TRR |
+| target true-reject rate | threshold | true-accept rate | true-reject rate |
 |---|---|---|---|
 | 0.990 | 0.3042 | 0.9858 | 0.9899 |
 | 0.995 | 0.3153 | 0.9817 | 0.9939 |
@@ -26,15 +26,16 @@ The shipped default is **threshold 0.3388**, giving a 98.2% true-accept rate at 
 gets in and accepting whatever convenience that leaves, which is why the table is
 indexed by true-reject rate.
 
-The 99.8% ceiling is a property of the benchmark, not the model: 494 impostor pairs
-cannot resolve a rate finer than about 1 in 500.
+The 99.8% ceiling is a property of the benchmark, not the model: 494 pairs of
+different people cannot measure a rate finer than about 1 in 500.
 
 ### Liveness
 
 Anti-spoofing accuracy is **not** reported here, because it depends on your camera
-and on the attack you care about, and no spoof corpus ships with this repository.
-`eval/liveness.py` measures it against frames you capture yourself, and prints the
-per-cue separation so you can see which signal is carrying the decision.
+and on the attack you care about, and no spoof images ship with this repository.
+`eval/liveness.py` measures it against frames you capture yourself, and reports how
+well each check separates real faces from spoofs, so you can see which one is
+doing the work.
 
 ## How it works
 
@@ -47,19 +48,19 @@ frame -> YuNet detect -> texture check -> blink check -> SFace embed -> match ->
 | Stage | Implementation |
 |---|---|
 | Detection | YuNet CNN detector via OpenCV, 5 facial landmarks |
-| Texture liveness | Laplacian variance, spectral high-frequency ratio, saturation spread, specular fraction |
-| Blink liveness | Per-eye gradient energy tracked against a rolling baseline, dips counted as blinks |
+| Texture liveness | Laplacian variance, share of high-frequency detail, saturation spread, glare fraction |
+| Blink liveness | Edge detail around each eye against a rolling baseline, dips counted as blinks |
 | Identity | SFace 128-d embeddings, cosine similarity against enrolled templates |
-| Actuation | GPIO relay on a Pi, simulated lock elsewhere |
+| Unlocking | GPIO relay on a Pi, simulated lock elsewhere |
 | Audit | JSON Lines locally, optionally shipped to CloudWatch Logs |
 
-Texture detection targets a recapture from a screen or print, which loses fine
-detail and shifts colour and specular statistics. Blink detection targets a still
+Texture detection targets a face rephotographed from a screen or a print, which
+loses fine detail and changes color and glare. Blink detection targets a still
 photograph, which never blinks. The two cover different attacks, so both run.
 
 ## Privacy
 
-No face imagery is written to disk at any point. Enrolment stores the mean
+No face imagery is written to disk at any point. Enrollment stores the mean
 embedding of the samples and discards the frames. Access events record the
 decision and the evidence for it, never embeddings or images, so the audit trail
 can leave the device without moving biometric data. `.gitignore` excludes image
@@ -104,6 +105,6 @@ python eval/recognition.py              # LFW verification, downloads to the skl
 python eval/liveness.py                 # your own live/spoof frames
 ```
 
-## Licence
+## License
 
 MIT

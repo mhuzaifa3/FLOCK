@@ -15,9 +15,9 @@ import numpy as np
 from flock.detect import Face
 
 
-def _eye_patch(frame: np.ndarray, centre: tuple[float, float], half: int) -> np.ndarray:
+def _eye_patch(frame: np.ndarray, center: tuple[float, float], half: int) -> np.ndarray:
     h, w = frame.shape[:2]
-    cx, cy = round(centre[0]), round(centre[1])
+    cx, cy = round(center[0]), round(center[1])
     x0, x1 = max(0, cx - half), min(w, cx + half)
     y0, y1 = max(0, cy - half), min(h, cy + half)
     if x1 <= x0 or y1 <= y0:
@@ -29,7 +29,7 @@ def _eye_patch(frame: np.ndarray, centre: tuple[float, float], half: int) -> np.
 
 
 def _patch_openness(patch: np.ndarray) -> float:
-    """Normalised by mean intensity so the baseline tracks the subject, not the room."""
+    """Normalized by mean intensity so the baseline tracks the subject, not the room."""
     if patch.size == 0:
         return 0.0
     patch = patch.astype(np.float32)

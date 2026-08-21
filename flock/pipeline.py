@@ -49,9 +49,9 @@ def texture_score(features: TextureFeatures) -> float:
     """Maps raw cues to [0, 1]. Calibrate with eval/liveness.py on your camera."""
     sharpness = min(features.laplacian_variance / 300.0, 1.0)
     detail = min(features.high_freq_ratio / 0.75, 1.0)
-    colour = min(features.saturation_std / 45.0, 1.0)
+    color = min(features.saturation_std / 45.0, 1.0)
     glare = max(0.0, 1.0 - features.specular_ratio * 12.0)
-    return float(np.average([sharpness, detail, colour, glare], weights=[0.4, 0.3, 0.2, 0.1]))
+    return float(np.average([sharpness, detail, color, glare], weights=[0.4, 0.3, 0.2, 0.1]))
 
 
 class AccessPipeline:
