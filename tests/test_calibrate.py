@@ -64,7 +64,7 @@ def test_demonstrating_one_in_a_million_needs_millions_of_comparisons():
 
 
 def test_measurement_floor_matches_the_calibration_run():
-    assert MEASURED_FMR_FLOOR == pytest.approx(fmr_upper_bound(0, 495), abs=5e-5)
+    assert fmr_upper_bound(0, 495) == pytest.approx(MEASURED_FMR_FLOOR, abs=5e-5)
 
 
 def test_shipped_threshold_comes_from_the_target_rate():
