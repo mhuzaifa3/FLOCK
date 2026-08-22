@@ -1,14 +1,25 @@
-"""Enrolled identities, stored as embeddings rather than images."""
+"""Enrolled identities, stored as embeddings rather than images.
+
+Search is one-to-many, so every enrolled template is another chance for a
+stranger to match. The threshold is drawn against the roster size for that
+reason, and a probe that fits two people well enough to confuse them is
+refused rather than resolved to whichever scored higher.
+"""
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
 
-from flock.config import ENROLLMENT_DIR
+from flock.config import DEFAULT_THRESHOLDS, ENROLLMENT_DIR, Thresholds
 from flock.embed import cosine_similarity
+
+AMBIGUOUS = "ambiguous"
+NO_ENROLLMENTS = "no_enrollments"
+BELOW_THRESHOLD = "below_threshold"
+ACCEPTED = "accepted"
 
 
 @dataclass(frozen=True)
@@ -16,6 +27,15 @@ class Match:
     name: str
     similarity: float
     accepted: bool
+    outcome: str = BELOW_THRESHOLD
+    threshold: float = 0.0
+    runner_up: str = ""
+    runner_up_similarity: float = 0.0
+    roster_size: int = 0
+
+    @property
+    def margin(self) -> float:
+        return self.similarity - self.runner_up_similarity
 
 
 class EnrollmentStore:
@@ -59,15 +79,32 @@ class EnrollmentStore:
                 loaded[path.stem] = data["template"]
         return loaded
 
-    def identify(self, embedding: np.ndarray, threshold: float) -> Match:
-        best_name, best_score = "", -1.0
-        for name, template in self.templates().items():
-            score = cosine_similarity(embedding, template)
-            if score > best_score:
-                best_name, best_score = name, score
-        if not best_name:
-            return Match(name="", similarity=0.0, accepted=False)
-        return Match(name=best_name, similarity=best_score, accepted=best_score >= threshold)
+    def identify(self, embedding: np.ndarray, thresholds: Thresholds = DEFAULT_THRESHOLDS) -> Match:
+        ranked = sorted(
+            ((cosine_similarity(embedding, t), n) for n, t in self.templates().items()),
+            reverse=True,
+        )
+        if not ranked:
+            return Match(name="", similarity=0.0, accepted=False, outcome=NO_ENROLLMENTS)
+
+        threshold = thresholds.match_cosine_for_roster(len(ranked))
+        best_score, best_name = ranked[0]
+        second_score, second_name = ranked[1] if len(ranked) > 1 else (0.0, "")
+        partial = Match(
+            name=best_name,
+            similarity=best_score,
+            accepted=False,
+            threshold=threshold,
+            runner_up=second_name,
+            runner_up_similarity=second_score,
+            roster_size=len(ranked),
+        )
+
+        if best_score < threshold:
+            return partial
+        if second_name and best_score - second_score < thresholds.identify_margin:
+            return replace(partial, outcome=AMBIGUOUS)
+        return replace(partial, accepted=True, outcome=ACCEPTED)
 
     def export_manifest(self) -> str:
         return json.dumps({"enrolled": self.names()}, indent=2)

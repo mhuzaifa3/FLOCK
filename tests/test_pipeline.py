@@ -6,6 +6,7 @@ from flock.enrollment import EnrollmentStore
 from flock.lock import SimulatedLock
 from flock.pipeline import (
     ALLOW,
+    DENY_AMBIGUOUS,
     DENY_NO_BLINK,
     DENY_NO_FACE,
     DENY_TEXTURE,
@@ -100,3 +101,23 @@ def test_events_never_carry_biometric_data(store, frame):
     assert "embedding" not in payload
     assert "template" not in payload
     assert "image" not in payload
+
+
+def test_a_probe_matching_two_enrolled_people_is_denied(store, frame):
+    store.enroll("alicia", [ENROLLED])
+    pipeline, lock, sink = build(store, ENROLLED, crop="sharp")
+    decision = pipeline.process(frame)
+    assert not decision.unlocked
+    assert decision.reason == DENY_AMBIGUOUS
+    assert decision.identity == ""
+    assert lock.unlock_calls == []
+    assert sink.events[-1].reason == DENY_AMBIGUOUS
+
+
+def test_unlock_event_records_the_margin_over_the_runner_up(store, frame):
+    store.enroll("bob", [STRANGER])
+    pipeline, _, sink = build(store, ENROLLED, crop="sharp")
+    decision = pipeline.process(frame)
+    assert decision.unlocked
+    assert decision.margin == pytest.approx(1.0)
+    assert sink.events[-1].margin == pytest.approx(1.0)

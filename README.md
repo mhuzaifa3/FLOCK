@@ -41,10 +41,36 @@ a property it demonstrates.
 Best accuracy is 0.9909 at threshold 0.3403. The run scored 988 of 1000 pairs;
 the other 12 contained a face the detector did not find.
 
-Two things this benchmark does not cover. LFW is a one-to-one verification test,
-while the door runs one-to-many search against every enrolled template, which
-multiplies the per-comparison rate by the size of the roster. And LFW faces are
-web photographs, not a camera at a doorway at night.
+LFW faces are web photographs, not a camera at a doorway at night, so treat
+even the measured row as an upper bound on field performance.
+
+### What the roster costs
+
+LFW measures one-to-one verification. The door runs one-to-many search, so a
+stranger gets one attempt per enrolled person and a fixed threshold would let
+the error grow with the roster. Flock spends the configured rate across the
+roster instead: with N enrolled, each comparison gets 1e-6/N, by the union
+bound, which holds without assuming the per-template scores are independent.
+
+| enrolled | per-comparison FMR | threshold | true-accept rate |
+|---|---|---|---|
+| 1 | 1.0e-6 | 0.5370 | 0.8824 |
+| 5 | 2.0e-7 | 0.5671 | 0.8438 |
+| 10 | 1.0e-7 | 0.5795 | 0.8235 |
+| 20 | 5.0e-8 | 0.5916 | 0.7972 |
+| 50 | 2.0e-8 | 0.6073 | 0.7586 |
+
+Enrolling more people costs convenience and leaves the security bar where it
+was. Adding the twentieth person drops the single-frame accept rate by about 8
+points and holds the door at 1e-6.
+
+This matters more than a per-attempt rate suggests. Face embeddings are stable,
+so a stranger who clears the threshold clears it every time they come back. The
+budget is spent on people who hold a permanent key, not on dice rolls.
+
+Flock also refuses a probe that two enrolled people both fit within
+`identify_margin` (0.05). Siblings and twins are the usual cause. A door that
+guesses between them logs a name it cannot stand behind.
 
 ### Liveness
 
@@ -67,7 +93,7 @@ frame -> YuNet detect -> texture check -> blink check -> SFace embed -> match ->
 | Detection | YuNet CNN detector via OpenCV, 5 facial landmarks |
 | Texture liveness | Laplacian variance, share of high-frequency detail, saturation spread, glare fraction |
 | Blink liveness | Edge detail around each eye against a rolling baseline, dips counted as blinks |
-| Identity | SFace 128-d embeddings, cosine similarity against enrolled templates |
+| Identity | SFace 128-d embeddings, cosine similarity, threshold scaled to the roster |
 | Unlocking | GPIO relay on a Pi, simulated lock elsewhere |
 | Audit | JSON Lines locally, optionally shipped to CloudWatch Logs |
 

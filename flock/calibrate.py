@@ -8,6 +8,11 @@ The measurement has a floor. 495 impostor comparisons cannot resolve a rate
 finer than about 1 in 500, so any rate below that is an extrapolation of the
 fitted tail, not an observation. ``fmr_upper_bound`` reports what the data
 actually supports; treat the gap between the two as unproven.
+
+The rate the configuration carries is a system rate: how often any stranger
+opens the door. A one-to-many search spends that budget across every enrolled
+template, so ``per_comparison_fmr`` divides it by the roster before the
+threshold is drawn.
 """
 from __future__ import annotations
 
@@ -29,6 +34,18 @@ def threshold_for_fmr(fmr: float) -> float:
         msg = f"false-match rate must be in (0, 1), got {fmr!r}"
         raise ValueError(msg)
     return IMPOSTOR_MEAN + IMPOSTOR_STDDEV * _NORMAL.inv_cdf(1.0 - fmr)
+
+
+def per_comparison_fmr(system_fmr: float, roster_size: int) -> float:
+    """Splits a whole-door false-match budget across the templates a probe hits.
+
+    This is the union bound, so it holds without assuming the per-template
+    scores are independent, which they are not: they share a probe.
+    """
+    if roster_size < 1:
+        msg = f"roster size must be at least 1, got {roster_size}"
+        raise ValueError(msg)
+    return system_fmr / roster_size
 
 
 def fmr_for_threshold(threshold: float) -> float:

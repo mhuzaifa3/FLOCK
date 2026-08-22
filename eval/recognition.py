@@ -9,6 +9,10 @@ rate, because the run scores a few hundred impostor pairs and cannot resolve a
 rate finer than roughly 1 in 500. A row whose target sits below that bound is
 read off the fitted tail, not observed.
 
+The roster table below the operating points shows what one-to-many search costs:
+the door spends its false-match budget across every enrolled template, so the
+threshold climbs and the accept rate falls as people are added.
+
 ``--fit`` prints the impostor distribution constants that flock/calibrate.py
 ships, so the shipped threshold can be regenerated from a run.
 
@@ -90,6 +94,7 @@ def best_accuracy_threshold(scores: np.ndarray, labels: np.ndarray) -> tuple[flo
 
 
 FMR_TARGETS = (1e-2, 1e-3, 1e-4, 1e-5, 1e-6)
+ROSTER_SIZES = (1, 5, 10, 20, 50)
 
 
 def impostor_fit(scores: np.ndarray, labels: np.ndarray) -> dict[str, float]:
@@ -147,6 +152,17 @@ def main() -> None:
         )
 
     shipped = DEFAULT_THRESHOLDS
+    roster_points = []
+    for size in ROSTER_SIZES:
+        threshold = shipped.match_cosine_for_roster(size)
+        tar, _ = rates_at(scores, labels, threshold)
+        roster_points.append(
+            {"enrolled": size,
+             "per_comparison_fmr": shipped.target_false_match_rate / size,
+             "threshold": round(threshold, 4),
+             "true_accept_rate": round(tar, 4)},
+        )
+
     result = {
         "subset": args.subset,
         "pairs_scored": len(scores),
@@ -160,6 +176,7 @@ def main() -> None:
         "shipped_is_extrapolated": shipped.match_is_extrapolated,
         "impostor_fit": {k: round(v, 6) for k, v in fit.items()},
         "operating_points": operating_points,
+        "roster_points": roster_points,
     }
     if args.json:
         print(json.dumps(result, indent=2))
@@ -188,6 +205,13 @@ def main() -> None:
         needed = comparisons_for_fmr(shipped.target_false_match_rate)
         print(f"         demonstrating it needs ~{needed:,} impostor comparisons, "
               f"this run has {impostors}")
+    print()
+    print(f"one-to-many cost at a system FMR of {shipped.target_false_match_rate:.0e}")
+    print(f"{'enrolled':>10} {'per-comparison':>15} {'threshold':>10} {'TAR':>8}")
+    for point in roster_points:
+        print(f"{point['enrolled']:>10d} {point['per_comparison_fmr']:>15.1e} "
+              f"{point['threshold']:>10.4f} {point['true_accept_rate']:>8.4f}")
+
     if (fit["comparisons"], round(fit["mean"], 6)) != (IMPOSTOR_COMPARISONS, IMPOSTOR_MEAN):
         print()
         print("calibration drift: flock/calibrate.py ships "

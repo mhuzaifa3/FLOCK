@@ -23,6 +23,7 @@ class AccessEvent:
     similarity: float = 0.0
     texture_score: float = 0.0
     blink_count: int = 0
+    margin: float = 0.0
     device_id: str = "flock-door"
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 

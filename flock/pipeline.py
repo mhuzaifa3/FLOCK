@@ -12,7 +12,7 @@ import numpy as np
 from flock.config import DEFAULT_THRESHOLDS, Thresholds
 from flock.detect import Face, FaceDetector
 from flock.embed import FaceEmbedder
-from flock.enrollment import EnrollmentStore
+from flock.enrollment import AMBIGUOUS, EnrollmentStore
 from flock.events import AccessEvent, EventSink
 from flock.liveness.blink import BlinkDetector, eye_openness
 from flock.liveness.texture import TextureFeatures, extract_features
@@ -22,6 +22,7 @@ DENY_NO_FACE = "no_face"
 DENY_TEXTURE = "texture_spoof"
 DENY_NO_BLINK = "no_blink"
 DENY_UNKNOWN = "unknown_identity"
+DENY_AMBIGUOUS = "ambiguous_identity"
 ALLOW = "match"
 
 
@@ -33,6 +34,7 @@ class Decision:
     similarity: float = 0.0
     texture_score: float = 0.0
     blink_count: int = 0
+    margin: float = 0.0
 
     def to_event(self) -> AccessEvent:
         return AccessEvent(
@@ -42,6 +44,7 @@ class Decision:
             similarity=round(self.similarity, 4),
             texture_score=round(self.texture_score, 4),
             blink_count=self.blink_count,
+            margin=round(self.margin, 4),
         )
 
 
@@ -92,18 +95,19 @@ class AccessPipeline:
                 Decision(False, DENY_NO_BLINK, texture_score=score, blink_count=blinks),
             )
 
-        match = self.store.identify(self.embedder.embed(frame, face), self.thresholds.match_cosine)
+        match = self.store.identify(self.embedder.embed(frame, face), self.thresholds)
         if not match.accepted:
+            reason = DENY_AMBIGUOUS if match.outcome == AMBIGUOUS else DENY_UNKNOWN
             return self._finish(
-                Decision(False, DENY_UNKNOWN, similarity=match.similarity,
-                         texture_score=score, blink_count=blinks),
+                Decision(False, reason, similarity=match.similarity,
+                         texture_score=score, blink_count=blinks, margin=match.margin),
             )
 
         self.lock.unlock(self.thresholds.unlock_seconds)
         self.blink.reset()
         return self._finish(
             Decision(True, ALLOW, identity=match.name, similarity=match.similarity,
-                     texture_score=score, blink_count=blinks),
+                     texture_score=score, blink_count=blinks, margin=match.margin),
         )
 
     def _finish(self, decision: Decision) -> Decision:

@@ -28,6 +28,6 @@ def test_event_has_timestamp_and_no_biometrics():
     payload = json.loads(AccessEvent(decision="deny", reason="no_face").as_json())
     assert payload["timestamp"].endswith("+00:00")
     assert set(payload) == {
-        "decision", "reason", "identity", "similarity",
-        "texture_score", "blink_count", "device_id", "timestamp",
+        "decision", "reason", "identity", "similarity", "texture_score",
+        "blink_count", "margin", "device_id", "timestamp",
     }
